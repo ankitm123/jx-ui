@@ -10,8 +10,59 @@
     const pipeline = await res.json()
 
     if (res.ok) {
+      if (pipeline.spec.status == 'pending' || pipeline.spec.status == 'Running') {
+        // @connect
+        // Connect to the websocket
+        let socket
+        // This will let us create a connection to our Server websocket.
+        // For this to work, your websocket needs to be running with node index.js
+
+        // Return a promise, which will wait for the socket to open
+
+        // This calculates the link to the websocket.
+        const socketUrl = `ws://localhost:8080/api/v1/logs/${org}/${repo}/${branch}/${build}`
+
+        // Define socket
+        // If you are running your websocket on localhost, you can change
+        // socketUrl to 'http://localhost:3000', as we are running our websocket
+        // on port 3000 from the previous websocket code.
+        socket = new WebSocket(socketUrl)
+        console.log('Socket opened!')
+        // This will fire once the socket opens
+        socket.onopen = (e) => {
+          // Send a little test data, which we can use on the server if we want
+          socket.send(JSON.stringify({ loaded: true }))
+          // Resolve the promise - we are connected
+        }
+
+        // This will fire when the server sends the user a message
+        socket.onmessage = (data) => {
+          console.log(data)
+          // Any data from the server can be manipulated here.
+          let parsedData = JSON.parse(data.data)
+          if (parsedData.append === true) {
+            const newEl = document.createElement('p')
+            newEl.textContent = parsedData.returnText
+            document.getElementById('websocket-returns').appendChild(newEl)
+          }
+        }
+
+        // This will fire on error
+        socket.onerror = (e) => {
+          // Return an error if any occurs
+          console.log(e)
+
+          // Try to connect again
+        }
+
+        // @isOpen
+        // check if a websocket is open
+        const isOpen = function (ws) {
+          return ws.readyState === ws.OPEN
+        }
+      }
       const res2 = await fetch(
-        `http://localhost:8080/api/v1/logs/${org}/${repo}/${branch}/${build}`
+        `http://localhost:8080/api/v1/logs_archived/${org}/${repo}/${branch}/${build}`
       )
       const logs = await res2.json()
       if (res2.ok) {
@@ -34,6 +85,7 @@
 <script lang="ts">
   import { diffTimes, displayTime } from '$src/lib/formatDate'
   import { default as AnsiUp } from 'ansi_up'
+  import { fromUnixTime } from 'date-fns'
   import { onMount } from 'svelte'
 
   const ansi_up = new AnsiUp()

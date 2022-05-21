@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/gorilla/mux v1.7.4
+	github.com/gorilla/websocket v1.4.2
 	github.com/jenkins-x/jx-api/v4 v4.3.7
 	github.com/jenkins-x/jx-helpers/v3 v3.2.9
 	github.com/rs/cors v1.8.2

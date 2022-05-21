@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	internal "jx-ui/internal/kube"
@@ -29,7 +30,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{} // use default options
+
 
 type spaHandler struct {
 	staticPath string
@@ -137,7 +142,88 @@ func (s *Server) PipelineHandler(w http.ResponseWriter, r *http.Request) {
 
 // PipelineLogHandler returns the logs for a given pipeline
 func (s *Server) PipelineLogHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+    if err != nil {
+        log.Print("Error during connection upgradation:", err)
+        return
+    }
+    defer conn.Close()
+
+	fmt.Println("Connected!")
 	ctx := context.Background()
+	vars := mux.Vars(r)
+	owner := vars["owner"]
+	repo := vars["repo"]
+	branch := vars["branch"]
+	build := vars["build"]
+
+	paName := fmt.Sprintf("%s-%s-%s-%s",
+		naming.ToValidName(owner),
+		naming.ToValidName(repo),
+		naming.ToValidName(branch),
+		build)
+
+	baseName := fmt.Sprintf("%s/%s/%s #%s",
+		naming.ToValidName(owner),
+		naming.ToValidName(repo),
+		naming.ToValidName(branch),
+		strings.ToLower(build))
+
+	logger := tektonlog.TektonLogger{
+		JXClient:     s.jxIface,
+		TektonClient: s.tknClient,
+		KubeClient:   s.kubeClient,
+		Namespace:    defaultNamespace,
+	}
+
+	pa, err := s.jxClient.
+		Get(context.Background(), paName, metav1.GetOptions{})
+	if err != nil {
+		// Todo: improve error handling!
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	triggerContext := pa.Spec.Context
+	name := fmt.Sprintf("%s %s", baseName, naming.ToValidName(triggerContext))
+
+	filter := tektonlog.BuildPodInfoFilter{
+		Owner:      owner,
+		Repository: repo,
+		Branch:     branch,
+		Build:      build,
+	}
+
+	_, _, prMap, err := logger.GetTektonPipelinesWithActivePipelineActivity(ctx, &filter)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for k, v := range prMap {
+		fmt.Println(k, " now value: ", v)
+	}
+
+	prList := prMap[name]
+
+	fmt.Println("PRlist ", prList)
+
+	// logs := []string{}
+
+	fmt.Println(pa.Spec.Status)
+	fmt.Println(len(logger.GetRunningBuildLogs(ctx, pa, prList, name)))
+	for line := range logger.GetRunningBuildLogs(ctx, pa, prList, name) {
+		err = conn.WriteMessage(1, []byte(line.Line))
+        if err != nil {
+            log.Println("Error during message writing:", err)
+            break
+        }
+		// s.render.JSON(w, http.StatusOK, logs)
+	}
+
+	// s.render.JSON(w, http.StatusOK, logs)
+}
+
+// PipelineLogHandler returns the logs for a given pipeline
+func (s *Server) PipelineArchivedLogHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	owner := vars["owner"]
 	repo := vars["repo"]
@@ -159,25 +245,8 @@ func (s *Server) PipelineLogHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	filter := tektonlog.BuildPodInfoFilter{
-		Owner:      owner,
-		Repository: repo,
-		Branch:     branch,
-		Build:      build,
-	}
-
-	_, _, prMap, err := logger.GetTektonPipelinesWithActivePipelineActivity(ctx, &filter)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	prList := prMap[name]
-
 	logs := []string{}
 
-	for line := range logger.GetRunningBuildLogs(ctx, pa, prList, name) {
-		logs = append(logs, line.Line)
-	}
 	// Read for archived logs if builds are not running
 	for line := range logger.StreamPipelinePersistentLogs(pa.Spec.BuildLogsURL) {
 		logs = append(logs, line.Line)
@@ -291,6 +360,7 @@ func registerRoutes(router *mux.Router, server *Server) *mux.Router {
 	router.HandleFunc("/api/v1/pipelines", server.PipelinesHandler)
 	router.HandleFunc("/api/v1/pipelines/{owner}/{repo}/{branch}/{build}", server.PipelineHandler).Methods("GET", "POST")
 	router.HandleFunc("/api/v1/logs/{owner}/{repo}/{branch}/{build}", server.PipelineLogHandler)
+	router.HandleFunc("/api/v1/logs_archived/{owner}/{repo}/{branch}/{build}", server.PipelineArchivedLogHandler)
 	router.HandleFunc("/api/v1/stages/{name}/logs", server.StageLogHandler)
 	router.HandleFunc("/api/v1/repositories", server.RepositoriesHandler)
 	spa := spaHandler{staticPath: "web/build", indexPath: "index.html"}
