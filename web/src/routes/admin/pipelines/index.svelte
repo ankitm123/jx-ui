@@ -4,11 +4,11 @@
     // ToDo: Use Axios
     const res = await fetch('http://localhost:8080/api/v1/pipelines')
     const pipelines = await res.json()
+    console.log(pipelines)
     if (res.ok) {
-      const pipelinesProcessed = pipelines.map((k) => k.spec)
       return {
         props: {
-          pipelinesProcessed,
+          pipelines,
         },
       }
     }
@@ -25,7 +25,7 @@
   import Table from '$lib/Components/Table.svelte'
   import type { GridOptions } from 'ag-grid-community'
   import { HTMLInColumnCell } from '$lib/cellRenderer'
-  export let pipelinesProcessed
+  export let pipelines
 
   let gridOptions: GridOptions = {
     defaultColDef: {
@@ -35,37 +35,37 @@
       flex: 1,
     },
     columnDefs: [
-      { headerName: 'Repository', field: 'gitRepository' },
-      { headerName: 'Branch', field: 'gitBranch' },
+      { headerName: 'Repository', field: 'Repository' },
+      { headerName: 'Branch', field: 'Branch' },
       {
         headerName: 'Build',
-        field: 'build',
+        field: 'Build',
         cellRenderer: (params) => {
-          return HTMLInColumnCell(`/pipelines/${params.data.gitOwner}/${params.data.gitRepository}/${params.data.gitBranch}/${params.data.build}`, params.data.build)
+          return HTMLInColumnCell(`/pipelines/${params.data.Owner}/${params.data.Repository}/${params.data.Branch}/${params.data.Build}`, params.data.Build)
         },
       },
-      { headerName: 'Status', field: 'status' },
+      { headerName: 'Status', field: 'Status' },
       {
         headerName: 'Start Time',
-        field: 'startedTimestamp',
-        valueFormatter: (params) => displayTime(Date.parse(params.data.startedTimestamp)),
+        field: 'StartTime',
+        valueFormatter: (params) => displayTime(Date.parse(params.data.StartTime)),
       },
       {
         headerName: 'End Time',
-        field: 'completedTimestamp',
-        valueFormatter: (params) => displayTime(Date.parse(params.data.completedTimestamp)),
+        field: 'EndTime',
+        valueFormatter: (params) => displayTime(Date.parse(params.data.EndTime)),
       },
       {
         headerName: 'Duration',
         field: 'duration',
         valueFormatter: (params) =>
           diffTimes(
-            Date.parse(params.data.startedTimestamp),
-            Date.parse(params.data.completedTimestamp)
+            Date.parse(params.data.StartTime),
+            Date.parse(params.data.EndTime)
           ),
       },
     ],
-    rowData: pipelinesProcessed,
+    rowData: pipelines,
     pagination: true,
     paginationAutoPageSize: true,
   }
