@@ -9,7 +9,7 @@ import (
 
 // RepositoriesHandler function
 func (s *Server) RepositoriesHandler(w http.ResponseWriter, r *http.Request) {
-	repo, err := s.srClient.
+	repo, err := s.SrClient.
 		List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		// Todo: improve error handling!

@@ -1,2 +1,6 @@
 # binaries
 bin/ui
+
+# IDE files
+.vscode
+.idea

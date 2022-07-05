@@ -21,15 +21,15 @@ import (
 
 // Server struct holds the external dependencies requires for running the UI backend
 type Server struct {
-	addr       string
+	Addr       string
 	server     *http.Server
-	jxIface    versioned.Interface
-	jxClient   jenkinsxv1.PipelineActivityInterface
-	srClient   jenkinsxv1.SourceRepositoryInterface
-	tknClient  tknclient.Interface
-	kubeClient kubernetes.Interface
+	JxIface    versioned.Interface
+	JxClient   jenkinsxv1.PipelineActivityInterface
+	SrClient   jenkinsxv1.SourceRepositoryInterface
+	TknClient  tknclient.Interface
+	KubeClient kubernetes.Interface
 	render     *render.Render
-	namespace  string
+	Namespace  string
 }
 
 type spaHandler struct {
@@ -76,36 +76,36 @@ func (s *Server) Run() error {
 		return err
 	}
 
-	if s.namespace == "" {
-		s.namespace = "jx"
+	if s.Namespace == "" {
+		s.Namespace = "jx"
 	}
 
-	s.addr = os.Getenv("UI_ADDR")
-	if s.addr == "" {
-		s.addr = "localhost:8080"
+	s.Addr = os.Getenv("UI_ADDR")
+	if s.Addr == "" {
+		s.Addr = "localhost:8080"
 	}
 
 	jxClient, err := versioned.NewForConfig(config)
 	if err != nil {
 		return err
 	}
-	s.jxClient = jxClient.JenkinsV1().PipelineActivities(s.namespace)
+	s.JxClient = jxClient.JenkinsV1().PipelineActivities(s.Namespace)
 
-	s.srClient = jxClient.JenkinsV1().SourceRepositories(s.namespace)
+	s.SrClient = jxClient.JenkinsV1().SourceRepositories(s.Namespace)
 
 	tknClient, err := tknclient.NewForConfig(config)
 	if err != nil {
 		return err
 	}
-	s.tknClient = tknClient
+	s.TknClient = tknClient
 
 	kubeClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
 	}
-	s.kubeClient = kubeClient
+	s.KubeClient = kubeClient
 
-	s.jxIface, err = jxclient.LazyCreateJXClient(s.jxIface)
+	s.JxIface, err = jxclient.LazyCreateJXClient(s.JxIface)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (s *Server) Run() error {
 	})
 	s.server = &http.Server{
 		Handler: c.Handler(router),
-		Addr:    s.addr,
+		Addr:    s.Addr,
 	}
 
 	err = s.server.ListenAndServe()

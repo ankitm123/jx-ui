@@ -13,7 +13,7 @@ import (
 
 // PipelinesHandler function
 func (s *Server) PipelinesHandler(w http.ResponseWriter, r *http.Request) {
-	pa, err := s.jxClient.
+	pa, err := s.JxClient.
 		List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		// Todo: improve error handling!
@@ -37,7 +37,7 @@ func (s *Server) PipelineHandler(w http.ResponseWriter, r *http.Request) {
 	name := naming.ToValidName(owner + "-" + repo + "-" + branch + "-" + build)
 	method := r.Method
 	if method == "GET" {
-		pa, err := s.jxClient.
+		pa, err := s.JxClient.
 			Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			// Todo: improve error handling!
@@ -46,7 +46,7 @@ func (s *Server) PipelineHandler(w http.ResponseWriter, r *http.Request) {
 
 		s.render.JSON(w, http.StatusOK, pa) //nolint:errcheck
 	} else {
-		pa, err := s.jxClient.
+		pa, err := s.JxClient.
 			Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			// Todo: improve error handling!
@@ -55,7 +55,7 @@ func (s *Server) PipelineHandler(w http.ResponseWriter, r *http.Request) {
 
 		prName := pa.Labels["tekton.dev/pipeline"]
 
-		pr, err := s.tknClient.TektonV1beta1().PipelineRuns("jx").Get(context.Background(), prName, metav1.GetOptions{})
+		pr, err := s.TknClient.TektonV1beta1().PipelineRuns(s.Namespace).Get(context.Background(), prName, metav1.GetOptions{})
 		if err != nil {
 			panic(err)
 		}
@@ -63,7 +63,7 @@ func (s *Server) PipelineHandler(w http.ResponseWriter, r *http.Request) {
 		if pr.Status.CompletionTime == nil {
 			pr.Spec.Status = pipelineapi.PipelineRunSpecStatusCancelled
 		}
-		_, err = s.tknClient.TektonV1beta1().PipelineRuns("jx").Update(context.Background(), pr, metav1.UpdateOptions{})
+		_, err = s.TknClient.TektonV1beta1().PipelineRuns(s.Namespace).Update(context.Background(), pr, metav1.UpdateOptions{})
 		if err != nil {
 			panic(err)
 		}

@@ -45,13 +45,13 @@ func (s *Server) PipelineStreamingLogHandler(w http.ResponseWriter, r *http.Requ
 		strings.ToLower(build))
 
 	logger := tektonlog.TektonLogger{
-		JXClient:     s.jxIface,
-		TektonClient: s.tknClient,
-		KubeClient:   s.kubeClient,
-		Namespace:    s.namespace,
+		JXClient:     s.JxIface,
+		TektonClient: s.TknClient,
+		KubeClient:   s.KubeClient,
+		Namespace:    s.Namespace,
 	}
 
-	pa, err := s.jxClient.
+	pa, err := s.JxClient.
 		Get(context.Background(), paName, metav1.GetOptions{})
 	if err != nil {
 		// Todo: improve error handling!
@@ -96,13 +96,13 @@ func (s *Server) PipelineArchivedLogHandler(w http.ResponseWriter, r *http.Reque
 	name := naming.ToValidName(owner + "-" + repo + "-" + branch + "-" + build)
 
 	logger := tektonlog.TektonLogger{
-		JXClient:     s.jxIface,
-		TektonClient: s.tknClient,
-		KubeClient:   s.kubeClient,
-		Namespace:    s.namespace,
+		JXClient:     s.JxIface,
+		TektonClient: s.TknClient,
+		KubeClient:   s.KubeClient,
+		Namespace:    s.Namespace,
 	}
 
-	pa, err := s.jxClient.
+	pa, err := s.JxClient.
 		Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		// Todo: improve error handling!
